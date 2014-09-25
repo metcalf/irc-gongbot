@@ -6,11 +6,14 @@ module IRCGongbot
     # +mqtt_host+:: Hostname of the MQTT server (e.g. "m2m.eclipse.org")
     # +mqtt_port+:: Port of the MQTT server (e.g. 1883)
     # +topic_root+:: Root topic where gongs are publishing (e.g. "/foo/bar")
-    def initialize(thaum, main_channel, mqtt_host, mqtt_port, topic_root)
+    def initialize(thaum, channels, mqtt_host, mqtt_port, topic_root)
       @last_ping_user = nil
 
       @thaum = thaum
-      @main_channel = main_channel
+      unless channels.is_a? Array
+        channels = [channels]
+      end
+      @channels = channels
       @mqtt_config = {
         :host => mqtt_host,
         :port => mqtt_port,
@@ -41,7 +44,9 @@ module IRCGongbot
         end
 
         @thaum.connect do
-          @thaum.join(@main_channel)
+          @channels.each do |channel|
+            @thaum.join(channel)
+          end
         end
       end
     end
@@ -51,7 +56,9 @@ module IRCGongbot
     def mqtt_message(message)
       name = message.topic.split('/')[-2]
       if message.payload == 'released'
-        @thaum.message(@main_channel, "Gonnnggg! (#{name})")
+        @channels.each do |channel|
+          @thaum.message(channel, "Gonnnggg! (#{name})")
+        end
       elsif message.payload == 'ping'
         if @thaum.connected
           msg = 'pong'
